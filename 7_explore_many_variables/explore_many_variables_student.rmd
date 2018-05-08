@@ -1,0 +1,361 @@
+Lesson 5
+========================================================
+
+### Multivariate Data
+Notes:
+
+***
+
+### Moira Perceived Audience Size Colored by Age
+Notes:
+
+***
+
+### Third Qualitative Variable
+Notes:
+
+```{r Third Qualitative Variable}
+setwd('/Users/arielma/data-analysis/lesson5_EDA/7_explore_many_variables')
+pf <- read.csv('pseudo_facebook.tsv', sep = '\t')
+ggplot(aes(x = gender, y = age),
+       data = subset(pf, !is.na(gender))) + geom_histogram()
+
+# Show mean in box plot and mark it using the shape of x (shape 4)
+ggplot(aes(x = gender, y = age),
+       data = subset(pf, !is.na(gender))) + 
+  geom_boxplot() +
+  stat_summary(fun.y = mean, geom = 'point', shape = 4)
+
+# Show median in line chart
+ggplot(aes(x = age, y = friend_count),
+       data = subset(pf, !is.na(gender))) + 
+  geom_line(aes(color = gender), stat = 'summary', fun.y = median)
+
+# Using dplyr to create the same plot
+# why we need to use ungroup() is explained here
+# https://discussions.udacity.com/t/ungroup-l5-third-qualitative-variable/19562/9
+library(dplyr)
+pf.fc_by_age_gender <- pf %>% 
+  filter(!is.na(gender)) %>%
+  group_by(age, gender) %>%
+  summarise(mean_friend_count = mean(friend_count),
+            median_friend_count = median(friend_count),
+            n = n()) %>%
+  ungroup() %>%
+  arrange(age)
+head(pf.fc_by_age_gender)
+?ungroup
+```
+
+***
+
+### Plotting Conditional Summaries
+Notes:
+
+```{r Plotting Conditional Summaries}
+ggplot(aes(x = age, y = median_friend_count),
+       data = pf.fc_by_age_gender) + 
+  geom_line(aes(color = gender))
+```
+
+***
+
+### Thinking in Ratios
+Notes:
+How many times more friends does the average female user have than the male user?
+***
+
+### Wide and Long Format
+Notes:
+
+***
+
+### Reshaping Data
+Notes:
+
+```{r}
+install.packages('reshape2')
+library(reshape2)
+# using dcast as we want the result to be a dataframe
+pf.fc_by_age_gender.wide <- dcast(pf.fc_by_age_gender,
+                                  age ~ gender,
+                                  value.var = 'median_friend_count')
+head(pf.fc_by_age_gender.wide)
+
+# We could also create a similar data frame using the dplyr and tidyr packages:
+pf.fc_by_age_gender.wide <-
+  subset(pf.fc_by_age_gender[c('age', 'gender', 'median_friend_count')],
+         !is.na(gender)) %>%
+  spread(gender, median_friend_count) %>%
+  mutate(ratio = male / female)
+
+head(pf.fc_by_age_gender.wide)
+
+# using the melt() function to convert wide to long
+pf.fc_by_age_gender.long <- melt(pf.fc_by_age_gender.wide, id.vars = 'age') %>% arrange(age)
+head(pf.fc_by_age_gender.long)
+```
+
+
+***
+
+### Ratio Plot
+Notes:
+
+```{r Ratio Plot}
+ggplot(data = pf.fc_by_age_gender.wide, aes(x = age, y = female/male)) +
+  geom_line(color = 'red') + geom_hline(yintercept = 1, alpha = 0.3, linetype = 2)
+```
+
+***
+
+### Third Quantitative Variable
+Notes:
+
+```{r Third Quantitative Variable}
+?floor
+pf$year_joined = floor(2014 - pf$tenure / 365)
+```
+
+***
+
+### Cut a Variable
+Notes:
+
+```{r Cut a Variable}
+summary(pf$year_joined)
+table(pf$year_joined)
+pf$year_joined.bucket <- cut(pf$year_joined, c(2004, 2009, 2011, 2012, 2014))
+?cut
+```
+
+***
+
+### Plotting it All Together
+Notes:
+
+```{r Plotting it All Together}
+table(pf$year_joined.bucket, useNA = 'ifany')
+ggplot(data = subset(pf, !is.na(year_joined.bucket)), aes(x = age, y = friend_count)) +
+  geom_line(aes(color = year_joined.bucket), stat = 'summary', fun.y = median)
+```
+
+***
+
+### Plot the Grand Mean
+Notes:
+
+```{r Plot the Grand Mean}
+ggplot(data = subset(pf, !is.na(year_joined.bucket)), aes(x = age, y = friend_count)) +
+  geom_line(aes(color = year_joined.bucket), stat = 'summary', fun.y = mean) +
+  geom_line(stat = 'summary', fun.y = mean, linetype = 2)
+```
+
+***
+
+### Friending Rate
+Notes:
+
+```{r Friending Rate}
+with(subset(pf, tenure >= 1), summary(friend_count/tenure))
+```
+
+***
+
+### Friendships Initiated
+Notes:
+
+What is the median friend rate? 0.2205
+
+What is the maximum friend rate? 417
+
+```{r Friendships Initiated}
+ggplot(data = subset(pf, tenure >= 1), aes(x = tenure, y = friendships_initiated / tenure)) +
+  geom_line(aes(color = year_joined.bucket), stat = 'summary', fun.y = mean)
+```
+
+***
+
+### Bias-Variance Tradeoff Revisited
+Notes:
+
+```{r Bias-Variance Tradeoff Revisited}
+
+ggplot(aes(x = tenure, y = friendships_initiated / tenure),
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary',
+            fun.y = mean)
+
+ggplot(aes(x = 7 * round(tenure / 7), y = friendships_initiated / tenure),
+       data = subset(pf, tenure > 0)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = "summary",
+            fun.y = mean)
+
+ggplot(aes(x = 30 * round(tenure / 30), y = friendships_initiated / tenure),
+       data = subset(pf, tenure > 0)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = "summary",
+            fun.y = mean)
+
+ggplot(aes(x = 90 * round(tenure / 90), y = friendships_initiated / tenure),
+       data = subset(pf, tenure > 0)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = "summary",
+            fun.y = mean)
+
+ggplot(aes(x = 7 * round(tenure / 7), y = friendships_initiated / tenure),
+       data = subset(pf, tenure > 0)) +
+  geom_smooth(aes(color = year_joined.bucket))
+```
+
+***
+
+### Sean's NFL Fan Sentiment Study
+Notes:
+
+***
+
+### Introducing the Yogurt Data Set
+Notes:
+
+***
+
+### Histograms Revisited
+Notes:
+
+```{r Histograms Revisited}
+yo <- read.csv('yogurt.csv')
+str(yo)
+
+# change the id from an int to a factor
+yo$id <- factor(yo$id)
+str(yo)
+
+ggplot(data = yo, aes(x = price)) + geom_histogram(binwidth = 2)
+```
+
+***
+
+### Number of Purchases
+Notes:
+
+```{r Number of Purchases}
+summary(yo)
+length(unique(yo$price))
+table(yo$price)
+?transform
+yo <- transform(yo, all.purchases = strawberry + blueberry + pina.colada + plain + mixed.berry)
+```
+
+***
+
+### Prices over Time
+Notes:
+
+```{r Prices over Time}
+ggplot(data = yo, aes(x = all.purchases)) + geom_histogram(binwidth = 1)
+str(yo)
+
+ggplot(data = yo, aes(x = time, y = price/all.purchases)) + geom_point(alpha = 1/5) 
+# or
+ggplot(data = yo, aes(x = time, y = price)) + geom_jitter(alpha = 1/4, shape = 21, fill = I('#F79420'))
+```
+
+***
+
+### Sampling Observations
+Notes:
+When familiarizing yourself with a new data set that contains multiple observations of the same units, it's often useful to work with a sample of those units so that it's easy to display the raw data for that sample.
+
+In the case of yogurt data set, we might want to look at a small sample of households in more details so that we know what kind of within and between household variation we are working with. THis analysis of a sub-sample might come before trying to use within househould variaion as part of a model. For example, this data set was originally used to model comsumer preferences for variety. But before doing that, we'd want to look at how often we observe households buying yogurt, how often they buy multiple items, and what prices they are buying yogurt at. One way to do this is to look at some sub-sample in detail.
+***
+
+### Looking at Samples of Households
+
+```{r Looking at Sample of Households}
+?set.seed
+?facet_wrap
+## set the seed for reproducible results
+set.seed(1986)
+sample.ids <- sample(levels(yo$id), 16)
+
+ggplot(data = subset(yo, id %in% sample.ids), aes(x = time, y = price)) + 
+  facet_wrap( ~ id) +
+  geom_line() +
+  geom_point(aes(size = all.purchases), pch = 1)
+```
+
+***
+
+### The Limits of Cross Sectional Data
+Notes:
+
+***
+
+### Many Variables
+Notes:
+Much of the analysis we've done so far focuesd on some pre-chosen variable, relatonaship or question of interest. We then used EDA to let those chosen variables speak and surprise us. Most recently, when analyzing the relationship between two variables we look to incorporate more variables in the analysis to improve it. For example, by seeing whether a particular relationship is consistent across values of those other variables. In choosing a third or fourth variable to plot we relied on our domain knowledge. But often, we might want visualisations or summaries to help us identify such auxiliary variables. In some analysis, we may plan to make use of a large number of variables. Perhaps, we are planning on predicting on variable with 10, 20, or hundreds of others. Or maybe we want to summarise a large set of variables into a smaller set of dimensions. Or perhaps, we're looking for interesting relationships among a large set of variables. In such cases, we can help speed up our exploratory data analysis by producing many plots or comparisons at once. This could be one way to let the data set as a whole speak in part by drawing our attention to variables we didn't have a preexisting interest in.
+***
+
+### Scatterplot Matrix
+Notes:
+```{r}
+install.packages('GGally')
+library(GGally)
+
+set.seed(1836)
+pf_subset <- pf[, c(2:15)]
+ggpairs(pf_subset[sample.int(nrow(pf_subset), 1000),]) 
+names(pf_subset)
+```
+
+***
+
+### Even More Variables
+Notes:
+```{r}
+nci <- read.table('nci.tsv')
+colnames(nci) <- c(1:64)
+?colnames
+```
+
+***
+
+### Heat Maps
+Notes:
+
+```{r}
+nci <- read.table("nci.tsv")
+colnames(nci) <- c(1:64)
+```
+
+```{r}
+library(reshape2)
+nci.long.samp <- melt(as.matrix(nci[1:200,])) 
+names(nci.long.samp) <- c("gene", "case", "value")
+
+head(nci.long.samp)
+library(ggplot2)
+  
+ggplot(aes(y = gene, x = case, fill = value),
+  data = nci.long.samp) +
+  geom_tile() +
+  scale_fill_gradientn(colours = colorRampPalette(c("blue", "red"))(100))
+```
+
+
+***
+
+### Analyzing Three of More Variables
+Reflection:
+Looking at patterns across many variables at once.
+We statrted with simple extensions to the scatter plot and plots of conditional summaries that you worked with in lesson 4, such as adding summaries for multiple groups. Then we tried some techniques for examining a large number of variables at once, such as scatter-plot matrices and heat maps. 
+
+we also learned how to reshape data, moving from broad data with one row per case, to aggregate data with one row per combination of variables, and we moved back and forth between long and wide formats for our data.
+***
+
+Click **KnitHTML** to see all of your hard work and to have an html
+page of this lesson, your answers, and your notes!
+

@@ -1,0 +1,30 @@
+---
+title: "8_problem_set"
+author: "Ariel Ma"
+date: "08/05/2018"
+output: html_document
+---
+
+```{r 8.1 Price Histograms with facet and color}
+?diamonds
+data(diamonds)
+ggplot(data = diamonds, aes(x = price)) + facet_wrap(~color) + geom_histogram(aes(fill = cut)) + scale_fill_brewer(palette="Spectral") + scale_x_log10()
+```
+```{r 8.2 prics vs table colored by cut}
+ggplot(data = diamonds, aes(x = table, y = price)) +
+  geom_point(aes(color = cut)) + 
+  scale_color_brewer(type = 'qual') +
+  scale_x_continuous(limits = c(50, 80), breaks = seq(50,80,2))
+```
+
+```{r 8.4 price vs volume and diamond clarity}
+diamonds$volume = diamonds$x * diamonds$y * diamonds$z
+ggplot(data = subset(diamonds, volume != 0 & volume <= quantile(volume, 0.99)), aes(x = volume, y = price)) +
+  geom_point(aes(color = clarity)) + 
+  scale_color_brewer(type = 'div') +
+  scale_x_continuous(limits = c(0, 350), breaks = seq(0,350,100)) +
+  scale_y_log10() 
+
+    
+```
+

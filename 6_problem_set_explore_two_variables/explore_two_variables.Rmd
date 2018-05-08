@@ -1,0 +1,108 @@
+---
+title: '6 Problem Set: Explore Two Variables'
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r set up}
+setwd('/Users/arielma/data-analysis/lesson5_EDA/6_problem_set_explore_two_variables')
+data("diamonds")
+names(diamonds)
+```
+
+```{r 6.1 scatterplot for price vs x}
+# to insert R markdown, option + command + i
+?diamonds 
+ggplot(aes(x = price, y = x), data = diamonds) + geom_point(alpha = 1/20)
+
+```
+```{r 6.3 Correlations}
+cor.test(diamonds$price, diamonds$x, method = 'pearson' )
+cor.test(diamonds$price, diamonds$y, method = 'pearson' )
+cor.test(diamonds$price, diamonds$z, method = 'pearson' )
+```
+
+```{r 6.4 price vs depth}
+?seq
+ggplot(aes(x = depth, y = price), data = diamonds) + 
+  geom_point(alpha = 1/100) + 
+  scale_x_continuous(breaks = seq(43, 79, 2))
+```
+
+```{r 6.7 Correlation - price and depth}
+cor.test(diamonds$depth, diamonds$price, method = 'pearson')
+```
+
+```{r 6.8 price vs carat}
+ggplot(data = diamonds, aes(x = carat, y = price)) +
+  geom_point() + 
+  xlim(0, quantile(diamonds$carat, 0.99)) +
+  ylim(0, quantile(diamonds$price, 0.99)) 
+```
+```{r 6.9 price vs volume}
+diamonds$volume = diamonds$x * diamonds$y * diamonds$z 
+
+ggplot(data = diamonds, aes(x = volume, y = price)) +
+  geom_point()
+
+detach("package:dplyr", unload=TRUE)
+library(plyr)
+count(diamonds$volume == 0)
+```
+```{r 6.11 correlations on subsets}
+volume_subset <- subset(diamonds, volume <= 800 | volume == 0)
+# or
+with(volume_subset, cor.test(price, volume))
+```
+
+```{r 6.12 Adjustments - price vs colume}
+ggplot(data = volume_subset, aes(x = volume, y = price)) + 
+  geom_point(alpha = 1/20) +
+  geom_smooth(method = 'lm', color = 'red')
+```
+
+```{r 6.13 mean price by clarity}
+library(dplyr)
+diamondsByClarity = diamonds %>%
+  group_by(clarity) %>%
+  summarise(mean_price = mean(price),
+            median_price = median(price),
+            min_price = min(price),
+            max_price = max(price),
+            n = n()) 
+```
+
+```{r 6.14 bar charts of mean price}
+
+?diamonds
+str(diamonds)
+diamonds_mp_by_clarity = diamonds %>%
+  group_by(clarity) %>%
+  summarise(mean_price = mean(price),
+            median_price = median(price),
+            min_price = min(price),
+            max_price = max(price),
+            n = n()) %>%
+  ungroup() %>%
+  arrange(clarity)
+
+diamonds_mp_by_color = diamonds %>%
+  group_by(color) %>%
+  summarise(mean_price = mean(price),
+            median_price = median(price),
+            min_price = min(price),
+            max_price = max(price),
+            n = n()) %>%
+  arrange(color)
+
+
+library(gridExtra)
+# Why clarity not in the right order??? Referred to this post 
+# https://stackoverflow.com/questions/27207963/arrange-not-working-on-grouped-data-frame
+p1 <- ggplot(data = diamonds_mp_by_clarity, aes(x = clarity, y = mean_price)) + geom_bar(stat = 'identity')
+p2 <- ggplot(data = diamonds_mp_by_color, aes(x = color, y = mean_price)) + geom_bar(stat = 'identity')
+grid.arrange(p1, p2, ncol = 1)
+
+```
+
